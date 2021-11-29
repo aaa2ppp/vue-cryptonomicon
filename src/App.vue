@@ -40,16 +40,16 @@
       <section>
         <div class="flex">
           <div class="max-w-xs">
-            <label for="wallet" class="block text-sm font-medium text-gray-700"
-              >Тикер {{ newWallet }}</label
+            <label for="ticker" class="block text-sm font-medium text-gray-700"
+              >Тикер {{ tickerName }}</label
             >
             <div class="mt-1 relative rounded-md shadow-md">
               <input
-                v-model.trim="newWallet"
-                @keyup.enter="addWallet(newWallet)"
+                v-model.trim="tickerName"
+                @keyup.enter="addTicker(tickerName)"
                 type="text"
-                name="wallet"
-                id="wallet"
+                name="ticker"
+                id="ticker"
                 class="
                   block
                   w-full
@@ -67,9 +67,9 @@
               class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
             >
               <span
-                v-for="(wallet, idx) of walletChoice"
-                :key="idx"
-                @click="(newWallet = wallet), addWallet(wallet)"
+                v-for="chioceName of tickerChoice"
+                :key="chioceName"
+                @click="(tickerName = chioceName), addTicker(tickerName)"
                 class="
                   inline-flex
                   items-center
@@ -83,17 +83,17 @@
                   cursor-pointer
                 "
               >
-                {{ wallet }}
+                {{ chioceName }}
               </span>
             </div>
-            <div v-if="newWalletAlreadyExists" class="text-sm text-red-600">
+            <div v-if="tickerNameExists" class="text-sm text-red-600">
               Такой тикер уже добавлен
             </div>
           </div>
         </div>
         <button
-          :disabled="newWalletAlreadyExists"
-          @click="addWallet(newWallet)"
+          :disabled="tickerNameExists"
+          @click="addTicker(tickerName)"
           type="button"
           class="
             my-4
@@ -138,10 +138,10 @@
       <hr class="w-full border-t border-gray-600 my-4" />
       <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
         <div
-          v-for="(wallet, idx) of walletList"
-          :key="idx"
-          :class="getWalletClass(wallet)"
-          @click="currentWallet = wallet.name"
+          v-for="ticker of tickers"
+          :key="ticker"
+          :class="getTickerClass(ticker)"
+          @click="currentTicker = ticker"
           class="
             bg-white
             overflow-hidden
@@ -153,15 +153,15 @@
         >
           <div class="px-4 py-5 sm:p-6 text-center">
             <dt class="text-sm font-medium text-gray-500 truncate">
-              {{ wallet.name }} - USD
+              {{ ticker.name }} - USD
             </dt>
             <dd class="mt-1 text-3xl font-semibold text-gray-900">
-              {{ wallet.price || "-" }}
+              {{ ticker.price || "-" }}
             </dd>
           </div>
           <div class="w-full border-t border-gray-200"></div>
           <button
-            @click.stop="removeWallet(idx)"
+            @click.stop="removeTicker(ticker)"
             class="
               flex
               items-center
@@ -195,16 +195,16 @@
         </div>
       </dl>
       <hr class="w-full border-t border-gray-600 my-4" />
-      <section v-if="currentWallet" class="relative">
+      <section v-if="currentTicker" class="relative">
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-          {{ currentWallet }} - USD
+          {{ currentTicker.name }} - USD
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div
-            v-for="(value, idx) of chart"
+            v-for="(barStyles, idx) of chartBars"
             :key="idx"
             class="bg-purple-800 border w-10"
-            :style="getChartStyle(idx)"
+            :style="barStyles"
           ></div>
         </div>
         <button
@@ -240,90 +240,94 @@
 </template>
 
 <script>
+import TickerPrice from "./components/TickerPrice.js";
+
 export default {
   name: "App",
   data() {
     return {
       isLoaded: false,
-      newWallet: "",
-      walletChoice: ["BTC", "DOGE", "BCH", "CHD"],
-      walletList: [],
-      currentWallet: "",
-      chart: [],
+      tickerName: "",
+      tickerChoice: ["BTC", "DOGE", "BCH", "CHD"],
+      tickers: [],
+      currentTicker: null,
+      priceChart: [],
     };
   },
   computed: {
-    newWalletAlreadyExists() {
-      return this.walletExists(this.newWallet);
+    tickerNameExists() {
+      return this.getTicker(this.tickerName);
     },
-    chartMin() {
-      return Math.min.apply(null, this.chart);
+    priceChartMin() {
+      return Math.min.apply(null, this.priceChart);
     },
-    chartMax() {
-      return Math.max.apply(null, this.chart);
+    priceChartMax() {
+      return Math.max.apply(null, this.priceChart);
     },
-
+    chartBars() {
+      return this.priceChart.map((price) => {
+        const min = this.priceChartMin;
+        const max = this.priceChartMax;
+        let height = min == max ? 50 : 5 + ((price - min) / (max - min)) * 95;
+        return { height: height + "% " };
+      });
+    },
   },
   methods: {
-    walletExists(wallet) {
-      const s = wallet.toUpperCase();
-      return this.walletList.find((x) => x.name == s) != undefined;
-    },
-    addWallet(wallet) {
-      console.log("addWallet:", wallet);
-      if (wallet && !this.walletExists(wallet)) {
-        const s = wallet.toUpperCase();
-        this.walletList.push({ name: s, price: Math.random() * 100 });
-        this.currentWallet = s;
-        this.newWallet = "";
-        this.walletPriceSimulation(s);
+    addTicker(name) {
+      if (name && !this.isTickerExists(name)) {
+        name = name.toUpperCase();
+        this.tickers.push({ name: name, price: 0 });
+        this.currentTicker = this.tickers.at(-1);
+        this.tickerName = "";
+        TickerPrice.addListener(name, this.setTickerPrice);
       }
     },
-    removeWallet(index) {
-      if (this.currentWallet == this.walletList[index].name) {
-        this.currentWallet = "";
-      }
-      this.walletList.splice(index, 1);
+    isTickerExists(name) {
+      return this.getTicker(name) != undefined;
     },
-    walletPriceSimulation(name) {
-      const s = name.toUpperCase();
-      const wallet = this.walletList.find((x) => x.name == s);
-      if (wallet) {
-        const newPrice = (wallet.price * (100 + Math.random() - 0.5)) / 100;
-        this.setWalletPrice(name, newPrice);
-        setTimeout(() => this.walletPriceSimulation(name), 3000);
+    getTicker(name) {
+      if (!name) {
+        return undefined;
+      } else {
+        name = name.toUpperCase();
+        return this.tickers.find((ticker) => ticker.name == name);
       }
     },
-    setWalletPrice(name, price) {
-      const s = name.toUpperCase();
-      const wallet = this.walletList.find((x) => x.name == s);
-      wallet.price = price;
-      if (wallet.name == this.currentWallet) {
-        this.chart.push(price);
+    removeTicker(ticker) {
+      const i = this.tickers.indexOf(ticker);
+      if (i != -1) {
+        this.tickers.splice(i, 1);
+        if (this.currentTicker == ticker) {
+          this.currentTicker = null;
+        }
+        TickerPrice.removeListener(ticker.name, this.setTickerPrice);
       }
     },
-    getWalletClass(wallet) {
-      return { "border-4": this.currentWallet == wallet.name };
+    getTickerClass(ticker) {
+      return { "border-4": this.currentTicker == ticker };
     },
-    getChartStyle(index) {
-      if (this.chart.length == 1) {
-        return { height: "50%" };
+    setTickerPrice(name, price) {
+      const ticker = this.getTicker(name);
+      if (ticker) {
+        ticker.price = price;
+        if (ticker == this.currentTicker) {
+          console.log("price chart push:", name, price);
+          this.priceChart.push(price);
+        }
       }
-      const min = this.chartMin;
-      const max = this.chartMax;
-      if (min == max) {
-        return { height: "50%" };
-      }
-      const height = 5 + ((this.chart[index] - min) / (max - min)) * 95;
-      return { height: height + "%" };
     },
     closeСhart() {
-      this.currentWallet = "";
+      this.currentTicker = null;
     },
   },
   watch: {
-    currentWallet() {
-      this.chart = [];
+    currentTicker() {
+      if (this.tickers.length == 0) {
+        console.log("removeAllListeners");
+        TickerPrice.removeAllListeners();
+      }
+      this.priceChart = [];
     },
   },
   mounted() {
