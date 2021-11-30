@@ -412,7 +412,7 @@ export default {
     return tickers
       .filter((value) => value.substr(0, prefix.length) == prefix)
       .sort()
-      .splice(0, count);
+      .slice(0, count);
   },
   check(name) {
     name = name.toUpperCase();
