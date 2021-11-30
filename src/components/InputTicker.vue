@@ -2,13 +2,13 @@
   <section>
     <div class="flex">
       <div class="max-w-xs">
-        <label for="ticker" class="block text-sm font-medium text-gray-700"
-          >Тикер {{ tickerName }}</label
+        <label for="ticker" class="block text-sm font-medium text-gray-700">
+          Тикер{{ tickerName ? " - " + tickerName : "" }}</label
         >
         <div class="mt-1 relative rounded-md shadow-md">
           <input
             v-model.trim="tickerName"
-            @keyup.enter="submit(tickerName)"
+            @keydown.enter="submit"
             type="text"
             name="ticker"
             id="ticker"
@@ -32,7 +32,7 @@
           <span
             v-for="chioceName of tickerChoice"
             :key="chioceName"
-            @click="(tickerName = chioceName), submit(chioceName)"
+            @click="(tickerName = chioceName), submit()"
             class="
               inline-flex
               items-center
@@ -50,12 +50,12 @@
           </span>
         </div>
         <div class="text-sm text-red-600">
-          {{ errorMsg }}
+          {{ errorMessage }}
         </div>
       </div>
     </div>
     <button
-      @click="submit(tickerName)"
+      @click="submit"
       type="button"
       class="
         my-4
@@ -100,34 +100,49 @@ import Tickers from "./Tickers.js";
 
 export default {
   name: "InputTicker",
-  props: {
-    errorMsg: String,
-  },
   emits: {
     submit: null,
-    cleanError: null,
   },
   data() {
     return {
-      tickerName: "",
+      // eslint-disable-next-line vue/no-reserved-keys
+      _tickerName: "",
+      errorMessage: "",
     };
   },
   computed: {
     tickerChoice() {
       return this.tickerName ? Tickers.filter(this.tickerName, 4) : [];
     },
-  },
-  methods: {
-    submit() {
-      if (this.$emit("submit", this.tickerName)) {
-        this.tickerName = "";
-      }
+    tickerName: {
+      get: function () {
+        return this._tickerName;
+      },
+      set: function (value) {
+        this._tickerName = value;
+        this.errorMessage = "";
+      },
     },
   },
-  watch: {
-    tickerName() {
-      console.log("clean error");
-      this.$emit("cleanError");
+  methods: {
+    clear() {
+      this.tickerName = "";
+    },
+    check() {
+      if (!this.tickerName) {
+        this.errorMessage = "Необходимо ввести имя тикера";
+        return false;
+      }
+      if (!Tickers.check(this.tickerName)) {
+        this.errorMessage = "Недопустимое имя тикера";
+        return false;
+      }
+      return true;
+    },
+    submit() {
+      if (this.check()) {
+        this.$emit("submit", this.tickerName);
+      }
     },
   },
 };
