@@ -56,7 +56,8 @@ export default {
       return this.prices.map((price, index) => {
         const min = Math.min.apply(null, this.prices);
         const max = Math.max.apply(null, this.prices);
-        const height = (min == max) ? 50 : 5 + ((this.prices[index] - min) / (max - min)) * 95;
+        const height =
+          min == max ? 50 : 5 + ((this.prices[index] - min) / (max - min)) * 95;
         return { height: height + "%" };
       });
     },

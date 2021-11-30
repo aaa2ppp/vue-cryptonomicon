@@ -16,7 +16,8 @@ setInterval(() => {
     }
 
     for (const listener of list) {
-      listener(tickerName, newPrice);
+      console.log("send price:", tickerName);
+      listener(newPrice);
     }
   }
 }, 3000);
@@ -39,7 +40,7 @@ export default {
     }
     const i = list.indexOf(listener);
     if (i != -1) {
-      list.slice(i, 1);
+      list.splice(i, 1);
       return;
     }
   },
