@@ -1,7 +1,7 @@
 <template>
   <section class="relative">
     <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">{{ tickerName }} - USD</h3>
-    <div class="flex items-end border-gray-600 border-b border-l h-64">
+    <div ref="sheet" class="flex items-end border-gray-600 border-b border-l h-64">
       <div v-for="(style, idx) of bars" :key="idx" class="bg-purple-800 border w-10" :style="style"></div>
     </div>
     <button @click.stop="$emit('close')" type="button" class="absolute top-0 right-0">
@@ -37,6 +37,11 @@
 </template>
 
 <script>
+const BAR_WIDTH_REM = 2.5;
+// function convertRemToPixels(rem) {
+//   return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
+// }
+
 export default {
   name: "PriceChart",
   props: {
@@ -48,12 +53,24 @@ export default {
   },
   computed: {
     bars() {
-      return this.prices.map((price, index) => {
-        const min = Math.min.apply(null, this.prices);
-        const max = Math.max.apply(null, this.prices);
-        const height = min == max ? 50 : 5 + ((this.prices[index] - min) / (max - min)) * 95;
+      const tail = this.prices.slice(-this.calculteBarsCount());
+      const min = Math.min.apply(null, tail);
+      const max = Math.max.apply(null, tail);
+      return tail.map((price) => {
+        const height = min == max ? 50 : 5 + ((price - min) / (max - min)) * 95;
         return { height: height + "%" };
       });
+    },
+  },
+  methods: {
+    calculteBarsCount() {
+      let count = 10;
+      const sheet = this.$refs.sheet;
+      if (sheet) {
+        const barWidth = parseFloat(getComputedStyle(document.documentElement).fontSize) * BAR_WIDTH_REM;
+        count = Math.round(sheet.clientWidth / barWidth);
+      }
+      return count;
     },
   },
 };

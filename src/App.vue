@@ -22,10 +22,19 @@
       <input-ticker ref="inputTicker" @submit="inputTickerSubmit" />
       <template v-if="tickers.length">
         <hr class="w-full border-t border-gray-600 my-4" />
-        <ticker-list :tickers="tickers" @select-ticker="selectTicker" @remove-ticker="removeTicker" />
+        {{ `filter: '${filter}', pageStart: ${pageRange.start}, pageEnd: ${pageRange.end}` }}
+        <list-pager
+          :count="filteredTickersCount"
+          :pageSize="pageSize"
+          :focusIndex="filteredTickersFocusIndex"
+          v-model:filter.trim="filter"
+          v-model:page-range="pageRange"
+        >
+          <ticker-list :tickers="paginatedTickers" @select-ticker="selectTicker" @remove-ticker="removeTicker" />
+        </list-pager>
         <hr class="w-full border-t border-gray-600 my-4" />
         <price-chart
-          v-if="currentTicker"
+          v-if="priceChartVisible"
           :tickerName="currentTicker.name"
           :prices="priceChart"
           @close="selectTicker(null)"
@@ -40,8 +49,10 @@ import TickerPrice from "./components/TickerPrice.js";
 import InputTicker from "./components/InputTicker.vue";
 import TickerList from "./components/TickerList.vue";
 import PriceChart from "./components/PriceChart.vue";
+import ListPager from "./components/ListPager.vue";
 
-const PREFIX = "cryptonomicon_";
+const PREFIX = "cryptonomicon";
+const MAX_CHART_SIZE = 100;
 
 export default {
   name: "App",
@@ -49,6 +60,7 @@ export default {
     InputTicker,
     TickerList,
     PriceChart,
+    ListPager,
   },
   data() {
     return {
@@ -57,10 +69,14 @@ export default {
       // eslint-disable-next-line vue/no-reserved-keys
       _currentTicker: null,
       priceChart: [],
+      filter: "",
+      pageSize: 3,
+      pageRange: { start: 0, end: 3 },
     };
   },
   computed: {
     currentTicker: {
+      // XXX
       get: function () {
         return this._currentTicker;
       },
@@ -74,6 +90,28 @@ export default {
           this._currentTicker.selected = true;
         }
       },
+    },
+
+    // XXX filter / pager control
+    filteredTickers() {
+      if (!this.filter) {
+        return this.tickers;
+      } else {
+        const filter = this.filter.toUpperCase();
+        return this.tickers.filter((ticker) => ticker.name.indexOf(filter) != -1);
+      }
+    },
+    filteredTickersCount() {
+      return this.filteredTickers.length;
+    },
+    filteredTickersFocusIndex() {
+      return this.currentTicker ? this.filteredTickers.indexOf(this.currentTicker) : -1;
+    },
+    paginatedTickers() {
+      return this.filteredTickers.slice(this.pageRange.start, this.pageRange.end);
+    },
+    priceChartVisible() {
+      return this.filteredTickersFocusIndex != -1;
     },
   },
   methods: {
@@ -128,12 +166,15 @@ export default {
       ticker.price = Math.abs(price) < 1 ? price.toPrecision(2) : price.toFixed(2);
       if (ticker == this.currentTicker) {
         console.log("price chart push:", ticker.name, price);
+        const deleteCount = this.priceChart.length - MAX_CHART_SIZE + 1;
+        if (deleteCount > 0) {
+          this.priceChart.splice(0, deleteCount);
+        }
         this.priceChart.push(price);
       }
     },
-    alert() {
-      alert("Hello, world!");
-    },
+
+    // save / load state
     load() {
       const names = JSON.parse(localStorage.getItem(`${PREFIX}tickers`));
       if (names) {

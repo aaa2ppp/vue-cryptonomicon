@@ -1,5 +1,6 @@
-const listeners = {};   // by tickerName
-const oldPrices = {};   // by tickerName
+const TIMEOUT = 1000;
+const listeners = {}; // by tickerName
+const oldPrices = {}; // by tickerName
 
 // get price simulation
 setInterval(() => {
@@ -16,11 +17,11 @@ setInterval(() => {
     }
 
     for (const listener of list) {
-      console.log("send price:", tickerName);
+      // console.log("send price:", tickerName);
       listener(newPrice);
     }
   }
-}, 3000);
+}, TIMEOUT);
 
 export default {
   addListener(tickerName, listener) {
