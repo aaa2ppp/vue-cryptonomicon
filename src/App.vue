@@ -2,18 +2,7 @@
   <div class="container mx-auto flex flex-col items-center bg-gray-100 p-4">
     <div
       v-if="isLoading"
-      class="
-        fixed
-        w-100
-        h-100
-        opacity-80
-        bg-purple-800
-        inset-0
-        z-50
-        flex
-        items-center
-        justify-center
-      "
+      class="fixed w-100 h-100 opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center"
     >
       <svg
         class="animate-spin -ml-1 mr-3 h-12 w-12 text-white"
@@ -21,14 +10,7 @@
         fill="none"
         viewBox="0 0 24 24"
       >
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width="4"
-        ></circle>
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path
           class="opacity-75"
           fill="currentColor"
@@ -40,17 +22,13 @@
       <input-ticker ref="inputTicker" @submit="inputTickerSubmit" />
       <template v-if="tickers.length">
         <hr class="w-full border-t border-gray-600 my-4" />
-        <ticker-list
-          :tickers="tickers"
-          @select-ticker="selectTicker"
-          @remove-ticker="removeTicker"
-        />
+        <ticker-list :tickers="tickers" @select-ticker="selectTicker" @remove-ticker="removeTicker" />
         <hr class="w-full border-t border-gray-600 my-4" />
         <price-chart
           v-if="currentTicker"
           :tickerName="currentTicker.name"
           :prices="priceChart"
-          @close="currentTicker = null"
+          @close="selectTicker(null)"
         />
       </template>
     </div>
@@ -62,6 +40,8 @@ import TickerPrice from "./components/TickerPrice.js";
 import InputTicker from "./components/InputTicker.vue";
 import TickerList from "./components/TickerList.vue";
 import PriceChart from "./components/PriceChart.vue";
+
+const PREFIX = "cryptonomicon_";
 
 export default {
   name: "App",
@@ -112,6 +92,8 @@ export default {
 
       // add a new ticker and set it as current
       this.currentTicker = this.addTicker(name);
+      this.saveTickers();
+      this.saveCurrentTicker();
     },
     addTicker(name) {
       // create a ticker and add it to the list
@@ -126,7 +108,7 @@ export default {
     },
     removeTicker(ticker) {
       if (this.currentTicker == ticker) {
-        this.currentTicker = null;
+        this.selectTicker(null);
       }
       if (ticker.setPrice) {
         TickerPrice.removeListener(ticker.name, ticker.setPrice);
@@ -136,9 +118,11 @@ export default {
       if (i != -1) {
         this.tickers.splice(i, 1);
       }
+      this.saveTickers();
     },
     selectTicker(ticker) {
       this.currentTicker = ticker;
+      this.saveCurrentTicker();
     },
     setTickerPrice(ticker, price) {
       ticker.price = Math.abs(price) < 1 ? price.toPrecision(2) : price.toFixed(2);
@@ -150,11 +134,47 @@ export default {
     alert() {
       alert("Hello, world!");
     },
+    load() {
+      const names = JSON.parse(localStorage.getItem(`${PREFIX}tickers`));
+      if (names) {
+        names.forEach((name) => this.addTicker(name));
+      }
+
+      const params = new URLSearchParams(document.location.search);
+      const currentName = params.get("q") || localStorage.getItem(`${PREFIX}currentTicker`);
+      if (currentName) {
+        console.log("currentName:", currentName);
+        const ticker = this.tickers.find((ticker) => ticker.name == currentName);
+        if (ticker) {
+          this.currentTicker = ticker;
+        }
+      }
+    },
+    saveTickers() {
+      localStorage.setItem(`${PREFIX}tickers`, JSON.stringify(this.tickers.map((ticker) => ticker.name)));
+    },
+    saveCurrentTicker() {
+      if (this.currentTicker) {
+        const name = this.currentTicker.name;
+        localStorage.setItem(`${PREFIX}currentTicker`, name);
+        history.pushState(null, null, `?q=${name}`);
+      } else {
+        localStorage.removeItem(`${PREFIX}currentTicker`);
+        history.pushState(null, null, location.pathname);
+      }
+    },
+  },
+  created() {
+    try {
+      this.load();
+    } catch (e) {
+      console.error("Can't load:", e.message);
+    }
   },
   mounted() {
     // simulation of page loading
     this.isLoading = true;
-    setTimeout(() => (this.isLoading = false), 3000);
+    setTimeout(() => (this.isLoading = false), 0);
   },
 };
 </script>

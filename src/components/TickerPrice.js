@@ -11,7 +11,7 @@ setInterval(() => {
       newPrice = oldPrices[tickerName] = 100 * Math.random();
     } else {
       // we use three dice to get a "normal" distribution
-      newPrice = oldPrices[tickerName] * (100 + (Math.random() + Math.random() + Math.random()) / 3 - 0.5) / 100;
+      newPrice = (oldPrices[tickerName] * (100 + (Math.random() + Math.random() + Math.random()) / 3 - 0.5)) / 100;
       oldPrices[tickerName] = newPrice;
     }
 
