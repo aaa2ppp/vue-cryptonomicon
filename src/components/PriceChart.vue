@@ -1,4 +1,5 @@
 <template>
+  <hr class="w-full border-t border-gray-600 my-4" />
   <section class="relative">
     <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">{{ tickerName }} - USD</h3>
     <div ref="sheet" class="flex items-end border-gray-600 border-b border-l h-64">
@@ -44,6 +45,7 @@ const BAR_WIDTH_REM = 2.5;
 
 export default {
   name: "PriceChart",
+  emits: ["close"],
   props: {
     tickerName: String,
     prices: Array,

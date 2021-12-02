@@ -22,20 +22,10 @@
       <input-ticker ref="inputTicker" @submit="inputTickerSubmit" />
       <template v-if="tickers.length">
         <hr class="w-full border-t border-gray-600 my-4" />
-        {{ `filter: '${filter}', pageStart: ${pageRange.start}, pageEnd: ${pageRange.end}` }}
-        <list-pager
-          :count="filteredTickersCount"
-          :pageSize="pageSize"
-          :focusIndex="filteredTickersFocusIndex"
-          v-model:filter.trim="filter"
-          v-model:page-range="pageRange"
-        >
-          <ticker-list :tickers="paginatedTickers" @select-ticker="selectTicker" @remove-ticker="removeTicker" />
-        </list-pager>
-        <hr class="w-full border-t border-gray-600 my-4" />
+        <ticker-list :tickers="tickers" v-model:selected-ticker="currentTicker" @remove-ticker="removeTicker" />
         <price-chart
           v-if="priceChartVisible"
-          :tickerName="currentTicker.name"
+          :tickerName="currentTicker?.name"
           :prices="priceChart"
           @close="selectTicker(null)"
         />
@@ -49,7 +39,6 @@ import TickerPrice from "./components/TickerPrice.js";
 import InputTicker from "./components/InputTicker.vue";
 import TickerList from "./components/TickerList.vue";
 import PriceChart from "./components/PriceChart.vue";
-import ListPager from "./components/ListPager.vue";
 
 const PREFIX = "cryptonomicon";
 const MAX_CHART_SIZE = 100;
@@ -60,7 +49,6 @@ export default {
     InputTicker,
     TickerList,
     PriceChart,
-    ListPager,
   },
   data() {
     return {
@@ -69,9 +57,6 @@ export default {
       // eslint-disable-next-line vue/no-reserved-keys
       _currentTicker: null,
       priceChart: [],
-      filter: "",
-      pageSize: 3,
-      pageRange: { start: 0, end: 3 },
     };
   },
   computed: {
@@ -81,6 +66,9 @@ export default {
         return this._currentTicker;
       },
       set: function (ticker) {
+        if (ticker == this._currentTicker) {
+          return;
+        }
         if (this._currentTicker) {
           this._currentTicker.selected = false;
         }
@@ -89,34 +77,16 @@ export default {
         if (this._currentTicker) {
           this._currentTicker.selected = true;
         }
+        this.saveCurrentTicker();
       },
     },
-
-    // XXX filter / pager control
-    filteredTickers() {
-      if (!this.filter) {
-        return this.tickers;
-      } else {
-        const filter = this.filter.toUpperCase();
-        return this.tickers.filter((ticker) => ticker.name.indexOf(filter) != -1);
-      }
-    },
-    filteredTickersCount() {
-      return this.filteredTickers.length;
-    },
-    filteredTickersFocusIndex() {
-      return this.currentTicker ? this.filteredTickers.indexOf(this.currentTicker) : -1;
-    },
-    paginatedTickers() {
-      return this.filteredTickers.slice(this.pageRange.start, this.pageRange.end);
-    },
     priceChartVisible() {
-      return this.filteredTickersFocusIndex != -1;
+      return this.currentTicker ? true : false;
     },
   },
   methods: {
     inputTickerSubmit(name) {
-      // XXX $ref
+      // TODO: $ref -> v-model or event
       if (!name) {
         this.$refs.inputTicker.errorMessage = "Не задано имя тикера";
         return;
@@ -160,7 +130,6 @@ export default {
     },
     selectTicker(ticker) {
       this.currentTicker = ticker;
-      this.saveCurrentTicker();
     },
     setTickerPrice(ticker, price) {
       ticker.price = Math.abs(price) < 1 ? price.toPrecision(2) : price.toFixed(2);
