@@ -7,7 +7,9 @@
         >
         <div class="mt-1 relative rounded-md shadow-md">
           <input
-            v-model.trim="tickerName"
+            ref="inputTickerName"
+            :value="tickerName"
+            @input="$emit('update:tickerName', $event.target.value)"
             @keydown.enter="submit"
             type="text"
             name="ticker"
@@ -23,13 +25,14 @@
               rounded-md
             "
             placeholder="Например DOGE"
+            autocomplete="off"
           />
         </div>
         <div v-if="tickerChoice.length" class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
           <span
             v-for="chioceName of tickerChoice"
             :key="chioceName"
-            @click="(tickerName = chioceName), submit()"
+            @click="choice(chioceName)"
             class="
               inline-flex
               items-center
@@ -94,52 +97,45 @@
 </template>
 
 <script>
-import Tickers from "./Tickers.js";
-
 export default {
   name: "InputTicker",
+
+  props: {
+    tickerName: {
+      type: String,
+      required: true,
+    },
+    errorMessage: {
+      type: String,
+    },
+    tickerChoice: {
+      type: Array,
+    },
+  },
+
   emits: {
     submit: null,
+    "update:tickerName": null,
   },
-  data() {
-    return {
-      // eslint-disable-next-line vue/no-reserved-keys
-      _tickerName: "",
-      errorMessage: "",
-    };
-  },
-  computed: {
-    tickerChoice() {
-      return this.tickerName ? Tickers.filter(this.tickerName, 4) : [];
-    },
-    tickerName: {
-      get: function () {
-        return this._tickerName;
-      },
-      set: function (value) {
-        this._tickerName = value;
-        this.errorMessage = "";
-      },
-    },
-  },
+
   methods: {
-    clear() {
-      this.tickerName = "";
-    },
-    check() {
-      if (!this.tickerName) {
-        this.errorMessage = "Необходимо ввести имя тикера";
-        return false;
-      }
-      if (!Tickers.check(this.tickerName)) {
-        this.errorMessage = "Недопустимое имя тикера";
-        return false;
-      }
-      return true;
+    choice(name) {
+      console.log("choice:", name);
+      this.$emit("update:tickerName", name);
+      // Q: почему нужно nextTick?
+      this.$nextTick(() => this.submit());
     },
     submit() {
-      if (this.check()) {
-        this.$emit("submit", this.tickerName);
+      console.log("submit");
+      this.$emit("submit");
+    },
+  },
+
+  watch: {
+    errorMessage(value) {
+      console.log("watch innerErrorMessage:", value);
+      if (value) {
+        this.$refs.inputTickerName.focus();
       }
     },
   },

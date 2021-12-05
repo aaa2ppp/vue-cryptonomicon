@@ -402,20 +402,78 @@ const _tickers = [
 ];
 
 const tickers = [];
-for (let i = 1, j = 0; i < _tickers.length; i += 2) {
-  tickers[j++] = _tickers[i].toUpperCase();
+for (let i = 0, j = 0; i < _tickers.length; i += 2) {
+  tickers[j++] = { description: _tickers[i], name: _tickers[i + 1].toUpperCase() };
+  tickers.sort((a, b) => (a.name > b.name ? 1 : a.name < b.name ? -1 : 0));
 }
 
+const TIMEOUT = 3000;
+const listeners = {}; // by tickerName
+const oldPrices = {}; // by tickerName
+
+// get price simulation
+setInterval(() => {
+  for (const tickerName in listeners) {
+    const list = listeners[tickerName];
+
+    let newPrice;
+    if (!oldPrices[tickerName]) {
+      newPrice = oldPrices[tickerName] = 100 * Math.random();
+    } else {
+      // we use three dice to get a "normal" distribution
+      newPrice = (oldPrices[tickerName] * (100 + (Math.random() + Math.random() + Math.random()) / 3 - 0.5)) / 100;
+      oldPrices[tickerName] = newPrice;
+    }
+
+    for (const listener of list) {
+      // console.log("send price:", tickerName);
+      listener(newPrice);
+    }
+  }
+}, TIMEOUT);
+
 export default {
-  filter(prefix, count) {
-    prefix = prefix.toUpperCase();
-    return tickers
-      .filter((value) => value.substr(0, prefix.length) == prefix)
-      .sort()
-      .slice(0, count);
+  addListener(tickerName, listener) {
+    if (!this.check(tickerName)) {
+      return false;
+    }
+    let list = listeners[tickerName];
+    if (!list) {
+      list = listeners[tickerName] = [];
+    } else if (list.indexOf(listener) != -1) {
+      return true;
+    }
+    list.push(listener);
+    return true;
   },
+
+  removeListener(tickerName, listener) {
+    const list = listeners[tickerName];
+    if (!list) {
+      return;
+    }
+    const i = list.indexOf(listener);
+    if (i != -1) {
+      list.splice(i, 1);
+      return;
+    }
+  },
+
+  removeAllListeners() {
+    for (const tickerName in listeners) {
+      listeners[tickerName] = [];
+    }
+  },
+
+  filter(callback, count) {
+    return tickers
+      .filter((item) => callback(item.name, item.description))
+      .slice(0, count)
+      .map((item) => item.name);
+  },
+
   check(name) {
     name = name.toUpperCase();
-    return tickers.indexOf(name) != -1;
+    return tickers.findIndex((item) => item.name == name) != -1;
   },
 };

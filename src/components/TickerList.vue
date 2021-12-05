@@ -18,9 +18,9 @@
           placeholder="Фильтр"
         />
         &nbsp;<button
+          :disabled="!(pageIndex > 0)"
           type="button"
           @click="pagesScrool(-1)"
-          :disabled="this.pageIndex <= 0"
           class="
             my-4
             inline-flex
@@ -41,11 +41,11 @@
             focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500
           "
         >
-          Назад</button
+          &lt; Назад</button
         >&nbsp;<button
+          :disabled="!(pageIndex < pageCount - 1)"
           type="button"
           @click="pagesScrool(+1)"
-          :disabled="this.pageIndex >= this.pageCount - 1"
           class="
             my-4
             inline-flex
@@ -66,8 +66,8 @@
             focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500
           "
         >
-          Вперед</button>
-        &nbsp;{{ [this.pageIndex + 1, this.pageCount].join(" / ") }}
+          Вперед &gt;</button
+        >&nbsp;{{ [this.pageIndex + 1, this.pageCount].join(" / ") }}
       </div>
       <slot></slot>
     </div>
@@ -76,9 +76,9 @@
       <div
         v-for="ticker of pageTickers"
         :key="ticker.name"
-        :class="{ 'border-4': ticker == this.selectedTicker }"
         @click="$emit('update:selectedTicker', ticker)"
         class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
+        :class="{ 'bg-red-100': ticker.setPrice === null, 'border-4': ticker == selectedTicker }"
       >
         <div class="px-4 py-5 sm:p-6 text-center">
           <dt class="text-sm font-medium text-gray-500 truncate">{{ ticker.name }} - USD</dt>
@@ -166,7 +166,7 @@ export default {
       }
     },
     pagesScrool(step) {
-      this.pageIndex = (this.pageIndex + step) % this.pageCount;
+      this.pageIndex = (((this.pageIndex + step) % this.pageCount) + this.pageCount) % this.pageCount;
     },
     showSelected() {
       const selectedIndex = this.selectedTicker ? this.filteredTickers.indexOf(this.selectedTicker) : -1;
@@ -180,6 +180,9 @@ export default {
       this.showSelected();
       // XXX $root
       this.$root.saveToUrl("filter", filter);
+    },
+    selectedTicker() {
+      this.showSelected();
     },
     pageIndex(pageIndex) {
       // XXX $root

@@ -19,7 +19,12 @@
       </svg>
     </div>
     <div class="container">
-      <input-ticker ref="inputTicker" @submit="inputTickerSubmit" />
+      <input-ticker
+        @submit="inputTickerSubmit"
+        v-model:tickerName="inputTickerName"
+        v-model:tickerChoice="inputTickerChoice"
+        :errorMessage="inputTickerError"
+      />
       <template v-if="tickers.length">
         <hr class="w-full border-t border-gray-600 my-4" />
         <input
@@ -40,8 +45,8 @@
 </template>
 
 <script>
-import TickerPrice from "./components/TickerPrice.js";
-import InputTicker from "./components/InputTicker.vue";
+import Tickers from "./TickersAPI.js";
+import inputTicker from "./components/InputTicker.vue";
 import TickerList from "./components/TickerList.vue";
 import PriceChart from "./components/PriceChart.vue";
 
@@ -50,64 +55,100 @@ const MAX_CHART_SIZE = 100;
 
 export default {
   name: "App",
+
   components: {
-    InputTicker,
+    inputTicker,
     TickerList,
     PriceChart,
   },
+
   data() {
     return {
       isLoading: true,
       tickers: [],
       selectedTicker: null,
       priceChart: [],
+      priceChartTick: 0,
+      inputTickerName: "",
+      inputTickerError: "",
     };
   },
+
   computed: {
+    inputTickerChoice() {
+      console.log("inputTickerChoice");
+      const input = this.inputTickerName?.toUpperCase();
+      if (input) {
+        // const filter = (name, decription) =>
+        //   (name.includes(search) || decription.toUpperCase().includes(search)) && !this.tickerExist(name);
+        const search = (name) => name.substring(0, input.length) == input && !this.tickerExist(name);
+        const count = 4;
+        return Tickers.filter(search, count);
+      } else {
+        return [];
+      }
+    },
+
     tickerCount() {
       return this.tickers.length;
     },
   },
+
   methods: {
-    inputTickerSubmit(name) {
-      // TODO: $ref -> v-model or event?
+    tickerExist(name) {
+      return this.tickers.find((ticker) => ticker.name == name) != undefined;
+    },
+    inputTickerSubmit() {
+      const name = this.inputTickerName.toUpperCase();
+      console.log("inputTickerSubmit:", name);
+
       if (!name) {
-        this.$refs.inputTicker.errorMessage = "Не задано имя тикера";
+        this.inputTickerError = "Необходимо ввести имя тикера";
         return;
       }
-      name = name.toUpperCase();
-      if (this.tickers.find((t) => t.name == name) != undefined) {
-        this.$refs.inputTicker.errorMessage = "Такой тикер уже добавлен";
+      // if (!Tickers.check(name)) {
+      //   this.inputTickerError = "Недопустимое имя тикера";
+      //   return;
+      // }
+      if (this.tickerExist(name)) {
+        this.inputTickerError = "Такой тикер уже добавлен";
         return;
       }
-      this.$refs.inputTicker.clear();
+
+      // ok, clear input
+      this.inputTickerName = "";
 
       // add a new ticker and set it as current
       this.selectedTicker = this.addTicker(name);
     },
+
     addTicker(name) {
       if (!name) {
         console.error("App.addTicker: name not defined");
         return null;
       }
+
       let ticker = this.tickers.find((t) => t.name == name);
       if (!ticker) {
         // create a ticker and add it to the list
         this.tickers.push({ name: name.toUpperCase(), price: 0 });
-        const ticker = this.tickers.at(-1);
+        ticker = this.tickers.at(-1);
 
         // subscribe to the price update
         ticker.setPrice = (price) => this.setTickerPrice(ticker, price);
-        TickerPrice.addListener(ticker.name, ticker.setPrice);
+        if (!Tickers.addListener(ticker.name, ticker.setPrice)) {
+          ticker.setPrice = null;
+        }
       }
       return ticker;
     },
+
     removeTicker(ticker) {
       if (this.selectedTicker == ticker) {
         this.selectedTicker = null;
       }
       if (ticker.setPrice) {
-        TickerPrice.removeListener(ticker.name, ticker.setPrice);
+        Tickers.removeListener(ticker.name, ticker.setPrice);
         ticker.setPrice == null;
       }
       const i = this.tickers.indexOf(ticker);
@@ -115,6 +156,7 @@ export default {
         this.tickers.splice(i, 1);
       }
     },
+
     setTickerPrice(ticker, price) {
       ticker.price = price;
       if (ticker == this.selectedTicker) {
@@ -123,14 +165,16 @@ export default {
         if (deleteCount > 0) {
           this.priceChart.splice(0, deleteCount);
         }
-        this.priceChart.push(price);
+        this.priceChart.push({ price: price, tick: this.priceChartTick++ });
       }
     },
+
     loadFromStorage(name, defaultValue) {
       console.log(`loadFromStorage: ${name}`);
       const str = localStorage.getItem(`${STORAGE_PREFIX}_${name}`);
       return str ? JSON.parse(str) : defaultValue;
     },
+
     saveToStorage(name, obj) {
       if (this.isLoading) {
         console.log(`saveToStorage: ${name}: skip on loading`);
@@ -139,19 +183,23 @@ export default {
       console.log(`saveToStorage: ${name}`);
       localStorage.setItem(`${STORAGE_PREFIX}_${name}`, JSON.stringify(obj));
     },
+
     loadFromUrl(name, defaultValue) {
       console.log(`loadFromUrl: ${name}`);
       const params = new URLSearchParams(document.location.search);
       const value = params.get(name);
       return value || defaultValue;
     },
+
     saveToUrl(name, value) {
       if (this.isLoading) {
         console.log(`saveToUrl: ${name}: skip on loading`);
         return;
       }
+
       console.log(`saveToUrl: ${name}`);
       const params = new URLSearchParams(location.search);
+
       if (value) {
         params.set(name, value);
       } else {
@@ -160,6 +208,7 @@ export default {
       history.pushState(null, null, `${location.pathname}?${params}`);
     },
   },
+
   watch: {
     tickerCount() {
       this.saveToStorage(
@@ -167,13 +216,18 @@ export default {
         this.tickers.map((ticker) => ticker.name)
       );
     },
+
     selectedTicker(ticker) {
       this.priceChart = [];
+      this.priceChartTick = 0;
       this.saveToUrl("sel", ticker?.name);
     },
+
+    inputTickerName() {
+      this.inputTickerError = "";
+    },
   },
-  created() {
-  },
+
   mounted() {
     this.loadFromStorage("tickers")?.forEach((tickerName) => this.addTicker(tickerName));
 
@@ -182,9 +236,9 @@ export default {
       this.selectedTicker = this.addTicker(selectedTickerName);
     }
 
-    this.$nextTick(() => {
-      this.isLoading = false;
-    });
+    // this.$nextTick(() => (this.isLoading = false));
+    // simulation of loading timeout
+    setTimeout(() => (this.isLoading = false), 1000);
   },
 };
 </script>

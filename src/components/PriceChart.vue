@@ -3,7 +3,7 @@
   <section class="relative">
     <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">{{ tickerName }} - USD</h3>
     <div ref="sheet" class="flex items-end border-gray-600 border-b border-l h-64">
-      <div v-for="(style, idx) of bars" :key="idx" class="bg-purple-800 border w-10" :style="style"></div>
+      <div v-for="item of bars" :key="item.tick" class="bg-purple-800 border" :style="item.style"></div>
     </div>
     <button @click.stop="$emit('close')" type="button" class="absolute top-0 right-0">
       <svg
@@ -45,35 +45,61 @@ const BAR_WIDTH_REM = 2.5;
 
 export default {
   name: "PriceChart",
-  emits: ["close"],
+
+  emits: {
+    close: null,
+  },
+
   props: {
     tickerName: String,
     prices: Array,
   },
+
   data() {
-    return {};
+    return {
+      sheetWidth: 0,
+    };
   },
+
   computed: {
     bars() {
-      const tail = this.prices.slice(-this.calculteBarsCount());
-      const min = Math.min.apply(null, tail);
-      const max = Math.max.apply(null, tail);
-      return tail.map((price) => {
-        const height = min == max ? 50 : 5 + ((price - min) / (max - min)) * 95;
-        return { height: height + "%" };
+      const tail = this.prices.slice(-this.barsCount || -1);
+      const min = Math.min.apply(
+        null,
+        tail.map((item) => item.price)
+      );
+      const max = Math.max.apply(
+        null,
+        tail.map((item) => item.price)
+      );
+      return tail.map((item) => {
+        const height = min == max ? 50 : 5 + ((item.price - min) / (max - min)) * 95;
+        return {
+          tick: item.tick,
+          style: {
+            height: height + "%",
+            width: BAR_WIDTH_REM + "rem",
+          },
+        };
       });
     },
-  },
-  methods: {
-    calculteBarsCount() {
-      let count = 10;
-      const sheet = this.$refs.sheet;
-      if (sheet) {
-        const barWidth = parseFloat(getComputedStyle(document.documentElement).fontSize) * BAR_WIDTH_REM;
-        count = Math.round(sheet.clientWidth / barWidth);
-      }
-      return count;
+
+    barsCount() {
+      const barWidth = parseFloat(getComputedStyle(document.documentElement).fontSize) * BAR_WIDTH_REM;
+      return Math.round(this.sheetWidth / barWidth);
     },
+  },
+
+  mounted() {
+    this.resizeObserver = new ResizeObserver(() => {
+      console.log("sheet resize", this.$refs.sheet.clientWidth);
+      this.sheetWidth = this.$refs.sheet.clientWidth;
+    });
+    this.$nextTick(() => this.resizeObserver.observe(this.$refs.sheet));
+  },
+
+  beforeUnmount() {
+    this.resizeObserver.unobserve(this.$refs.sheet);
   },
 };
 </script>
