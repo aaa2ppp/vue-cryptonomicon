@@ -28,7 +28,7 @@
             autocomplete="off"
           />
         </div>
-        <div v-if="tickerChoice.length" class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
+        <div v-if="tickerChoice?.length" class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
           <span
             v-for="chioceName of tickerChoice"
             :key="chioceName"
@@ -105,9 +105,11 @@ export default {
       type: String,
       required: true,
     },
+
     errorMessage: {
       type: String,
     },
+
     tickerChoice: {
       type: Array,
     },
@@ -120,20 +122,18 @@ export default {
 
   methods: {
     choice(name) {
-      console.log("choice:", name);
       this.$emit("update:tickerName", name);
       // Q: почему нужно nextTick?
       this.$nextTick(() => this.submit());
     },
+
     submit() {
-      console.log("submit");
       this.$emit("submit");
     },
   },
 
   watch: {
     errorMessage(value) {
-      console.log("watch innerErrorMessage:", value);
       if (value) {
         this.$refs.inputTickerName.focus();
       }

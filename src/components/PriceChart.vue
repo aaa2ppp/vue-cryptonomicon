@@ -39,9 +39,10 @@
 
 <script>
 const BAR_WIDTH_REM = 2.5;
-// function convertRemToPixels(rem) {
-//   return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
-// }
+
+function convertRemToPixels(rem) {
+  return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
+}
 
 export default {
   name: "PriceChart",
@@ -85,7 +86,7 @@ export default {
     },
 
     barsCount() {
-      const barWidth = parseFloat(getComputedStyle(document.documentElement).fontSize) * BAR_WIDTH_REM;
+      const barWidth = convertRemToPixels(BAR_WIDTH_REM);
       return Math.round(this.sheetWidth / barWidth);
     },
   },
